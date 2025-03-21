@@ -10,6 +10,7 @@ class HomePageLoading extends HomePage_state {}
 
 class HomePageLoaded extends HomePage_state {
   List<ImageData_model> data;
+
   HomePageLoaded(this.data);
 }
 

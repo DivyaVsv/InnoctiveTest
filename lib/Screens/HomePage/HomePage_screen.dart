@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:innoctive_test/Model/ImageData_model.dart';
 import 'package:innoctive_test/Screens/HomePage/HomePage_cubit.dart';
 import 'package:innoctive_test/Screens/HomePage/HomePage_state.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
@@ -10,26 +11,39 @@ class HomePageScreen extends StatefulWidget {
 
 class _HomePageScreen extends State<HomePageScreen> {
   final ScrollController _scrollcontroller = ScrollController();
-
+  var page = 0;
+  bool isLoading = false;
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
+    final cubit = context.read<HomePageCubit>();
+    cubit.fetchData(page);
+
     _scrollcontroller.addListener(onScroll);
   }
 
   onScroll() {
-    if (_scrollcontroller.position.pixels ==
-        _scrollcontroller.position.maxScrollExtent) {
-      context.read<HomePageCubit>().fetchData();
+    if (_scrollcontroller.position.pixels >=
+        _scrollcontroller.position.maxScrollExtent - 200) {
+      setState(() {
+        //page++;
+        context.read<HomePageCubit>().fetchData(page);
+      }); // Load next page
     }
+  }
+
+  @override
+  void dispose() {
+    _scrollcontroller.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     // TODO: implement build
     return BlocProvider(
-      create: (context) => HomePageCubit()..fetchData(),
+      create: (context) => HomePageCubit()..fetchData(page),
       child: DefaultTabController(
         length: 4,
         child: Scaffold(
@@ -109,50 +123,72 @@ class _HomePageScreen extends State<HomePageScreen> {
             ),
             body: BlocBuilder<HomePageCubit, HomePage_state>(
                 builder: (context, state) {
+              List<ImageData_model> data = [];
               if (state is HomePageLoading) {
                 return CircularProgressIndicator();
               } else if (state is HomePageLoaded) {
-                final data = state.data;
-                return MasonryGridView.builder(
-                    controller: _scrollcontroller,
-                    gridDelegate:
-                        SliverSimpleGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                    ),
-                    itemCount: data.length,
-                    itemBuilder: (context, index) {
-                      return Container(
-                        padding: EdgeInsets.all(10),
-                        child: Column(
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
-                              child: Image.network(
-                                "${data[index].url}",
-                                fit: BoxFit.cover,
-                                //height: 100,
-                              ),
-                            ),
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.supervised_user_circle_outlined,
-                                  size: 40,
-                                ),
-                                Text(
-                                  "${data[index].id}",
-                                  style: TextStyle(fontSize: 15),
-                                )
-                              ],
-                            )
-                          ],
-                        ),
-                      );
-                    });
+                data = state.data;
               } else if (state is HomePageError) {
                 return Text(" No Data Found");
               }
-              return CircularProgressIndicator();
+              return Column(
+                children: [
+                  Expanded(
+                      child: NotificationListener<ScrollNotification>(
+                    onNotification: (scrollNotification) {
+                      if (_scrollcontroller.position.pixels >=
+                          _scrollcontroller.position.maxScrollExtent - 200) {
+                        setState(() {
+                          page++;
+                          context.read<HomePageCubit>().fetchData(page);
+                        });
+                      }
+                      return true;
+                    },
+                    child: MasonryGridView.builder(
+                        controller: _scrollcontroller,
+                        gridDelegate:
+                            SliverSimpleGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                        ),
+                        itemCount: data.length,
+                        itemBuilder: (context, index) {
+                          return Container(
+                            padding: EdgeInsets.all(10),
+                            child: Column(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Image.network(
+                                    "${data[index].url}",
+                                    fit: BoxFit.cover,
+                                    //height: 100,
+                                  ),
+                                ),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.supervised_user_circle_outlined,
+                                      size: 40,
+                                    ),
+                                    Text(
+                                      "${data[index].id}",
+                                      style: TextStyle(fontSize: 15),
+                                    )
+                                  ],
+                                )
+                              ],
+                            ),
+                          );
+                        }),
+                  )),
+                  if (state is HomePageLoading)
+                    const Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: CircularProgressIndicator(),
+                    ),
+                ],
+              );
             })),
       ),
     );
